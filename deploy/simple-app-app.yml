@@ -1,0 +1,176 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+
+Description: Application stack of Simple App
+
+
+Parameters:
+
+  TemplateBucket:
+    Type: String
+    Default: awslabs-startup-kit-templates-deploy-v4
+    Description: The template bucket for the CloudFormation templates
+
+  EnvironmentName:
+    Type: String
+    Description: Environment name - dev or prod
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+    ConstraintDescription: Specify either dev or prod
+
+  VpcStackName:
+    Description: Name of an active CloudFormation stack of networking resources
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+
+  DatabaseStackName:
+    Description: Name of an active CloudFormation stack of database resources
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+
+  AppS3Bucket:
+    Description: S3 Bucket containing your application package
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+
+  AppS3Key:
+    Description: S3 Bucket key for your application package
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+
+  EC2KeyPairName:
+    Description: EC2 key pair name for SSH access
+    Type: AWS::EC2::KeyPair::KeyName
+
+  ELBIngressPort:
+    Description: The ELB ingress port used by security groups
+    Type: Number
+    MinValue: 0
+    MaxValue: 65535
+    ConstraintDescription: TCP ports must be between 0 - 65535
+    Default: 80
+
+  AppIngressPort:
+    Description: The application ingress port used by security groups
+    Type: Number
+    MinValue: 0
+    MaxValue: 65535
+    ConstraintDescription: TCP ports must be between 0 - 65535
+    Default: 80
+
+  StackType:
+    Description: node, rails, python, python3, or docker.
+    Type: String
+    Default: docker
+    AllowedValues:
+    - node
+    - rails
+    - spring
+    - python
+    - python3
+    - docker
+    ConstraintDescription: Specify node, rails, python, python3, docker or spring.
+
+  EbInstanceType:
+    Description: The instance type for Elastic Beanstalk
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Instance type not supported
+    AllowedValues:
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - t2.xlarge
+    - t2.2xlarge
+    - m5.large
+    - m5.xlarge
+    - m5.2xlarge
+    - m5.4xlarge
+    - m5.12xlarge
+    - m5.24xlarge
+    - r4.large
+    - r4.xlarge
+    - r4.2xlarge
+    - r4.4xlarge
+    - r4.8xlarge
+    - r4.16xlarge
+
+  SSLCertificateArn:
+    Description: The optional SSL/TLS certificate ARN
+    Type: String
+    MinLength: 0
+    MaxLength: 2048
+    Default: ""
+
+  AutoScalingMinInstanceCount:
+    Description: Minimum number of EC2 instances for Auto Scaling
+    Type: Number
+    MinValue: 1
+    MaxValue: 20
+    Default: 1  # Modified
+    ConstraintDescription: Specify a number between 1 - 20
+
+  AutoScalingMaxInstanceCount:
+    Description: Maximum number of EC2 instances for Auto Scaling
+    Type: Number
+    MinValue: 1
+    MaxValue: 20
+    Default: 6
+    ConstraintDescription: Specify a number between 1 - 20
+
+  DatabasePassword:
+    NoEcho: true
+    Type: String
+    Description: Database admin account password
+    MinLength: 6
+    MaxLength: 41
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Password must contain only alphanumeric characters
+
+  DatabaseName:
+    Default: foobar
+    Description: Database name (schema).
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+
+Resources:
+
+  ElasticBeanstalkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/templates/elastic-beanstalk.cfn.yml
+      Parameters:
+        ApplicationName: !Ref AWS::StackName
+        StackType: !Ref StackType
+        EnvironmentName: !Ref EnvironmentName
+        NetworkStackName: !Ref VpcStackName
+        DatabaseStackName: !Ref DatabaseStackName
+        DatabaseName: !Ref DatabaseName
+        DatabasePassword: !Ref DatabasePassword
+        AppS3Bucket: !Ref AppS3Bucket
+        AppS3Key: !Ref AppS3Key
+        EC2KeyPairName: !Ref EC2KeyPairName
+        DevInstanceType: !Ref EbInstanceType
+        ProdInstanceType: !Ref EbInstanceType
+        SSLCertificateArn: !Ref SSLCertificateArn
+        AutoScalingMinInstanceCount: !Ref AutoScalingMinInstanceCount
+        AutoScalingMaxInstanceCount: !Ref AutoScalingMaxInstanceCount
+
+Outputs:
+
+  ElasticBeanstalkStackName:
+    Value: !GetAtt ElasticBeanstalkStack.Outputs.Name
+    Export:
+      Name: !Sub ${AWS::StackName}-ElasticBeanstalkStack
